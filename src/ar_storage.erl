@@ -335,9 +335,11 @@ read_tx(Txs) when is_list(Txs) ->
 read_tx(ID) ->
 	case filelib:wildcard(tx_filepath(ID)) of
 		[] -> unavailable;
-		[Filename] -> read_tx_file(Filename);
+		[Filename] ->
+			{ok, TX} = read_tx_file(Filename),
+			TX;
 		Filenames ->
-			read_tx_file(hd(
+			{ok, TX} = read_tx_file(hd(
 				lists:sort(
 					fun(Filename, Filename2) ->
 						{ok, Info} = file:read_file_info(Filename, [{time, posix}]),
@@ -346,12 +348,17 @@ read_tx(ID) ->
 					end,
 					Filenames
 				)
-			))
+			)),
+			TX
 	end.
 
 read_tx_file(Filename) ->
-	{ok, Binary} = file:read_file(Filename),
-	ar_serialize:json_struct_to_tx(Binary).
+	case file:read_file(Filename) of
+		{ok, JSON} ->
+			{ok, ar_serialize:json_struct_to_tx(JSON)};
+		{error, Reason} ->
+			{error, Reason}
+	end.
 
 %% Write a block hash list to disk for retreival later (in emergencies).
 write_block_hash_list(Hash, BHL) ->
