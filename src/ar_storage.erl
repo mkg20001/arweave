@@ -341,9 +341,17 @@ read_tx(ID) ->
 read_tx_file(Filename) ->
 	case file:read_file(Filename) of
 		{ok, JSON} ->
-			{ok, ar_serialize:json_struct_to_tx(JSON)};
+			decode_tx_json(JSON);
 		{error, Reason} ->
 			{error, Reason}
+	end.
+
+decode_tx_json(JSON) ->
+	case ar_serialize:json_decode(JSON) of
+		{ok, Struct} ->
+			{ok, ar_serialize:json_struct_to_tx(Struct)};
+		{error, Reason} ->
+			{error, {invalid_json, Reason}}
 	end.
 
 %% Write a block hash list to disk for retreival later (in emergencies).
