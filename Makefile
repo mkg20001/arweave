@@ -31,50 +31,62 @@ DEFAULT_PEER_OPTS := \
 
 test_all: test test_apps test_ipfs
 
+.PHONY: test
 test: build_test
 	@erl $(ERL_TEST_OPTS) -noshell -sname slave -setcookie test -run ar main port 1983 data_dir data_test_slave &
 	@erl $(ERL_TEST_OPTS) -noshell -sname master -setcookie test -run ar test_with_coverage -s init stop
 	kill 0
 
+.PHONY: test_apps
 test_apps: all
 	@erl $(ERL_OPTS) -noshell -sname master -run ar test_apps -s init stop
 
+.PHONY: test_networks
 test_networks: all
 	@erl $(ERL_OPTS) -s ar start -s ar test_networks -s init stop
 
+.PHONY: test_ipfs
 test_ipfs: all
 # 	Since we're using mnesia for IPFS, the sname is important.
 	@erl $(ERL_OPTS) -noshell -sname master -run ar test_ipfs -s init stop
 
 tnt: test
 
+.PHONY: ct
 ct: all
 	mkdir -p testlog
 	@ct_run $(ERL_OPTS) -dir test/ -logdir testlog/
 
 no-vlns: test_networks
 
+.PHONY: realistic
 realistic: all
 	@erl $(ERL_OPTS) -noshell -s ar start -s ar_test_sup start realistic
 
+.PHONY: log
 log:
 	tail -n 100 -f logs/`ls -t logs | grep -v slave | head -n 1`
 
+.PHONY: catlog
 catlog:
 	cat logs/`ls -t logs | grep -v slave | head -n 1`
 
 all: build
 
+.PHONY: build-randomx
 build-randomx:
 	make -C lib/RandomX
 	make -C c_src
 
+.PHONY: gitmodules
 gitmodules:
 	git submodule foreach 'git remote prune origin' && git submodule sync && git submodule update --init
 
+.PHONY: compile_prod
 compile_prod: build-randomx
 	./rebar3 compile --deps_only
 
+.PHONY: compile_test
 compile_test: build-randomx
 	./rebar3 as test compile
 
@@ -82,14 +94,17 @@ build: gitmodules compile_prod build_arweave
 
 build_test: gitmodules compile_test build_arweave
 
+.PHONY: build_arweave
 build_arweave:
 	erlc $(ERLC_OPTS) +export_all -o ebin/ src/ar.erl
 	erl $(ERL_OPTS) -noshell -s ar rebuild -s init stop
 
+.PHONY: docs
 docs: all
 	mkdir -p docs
 	(cd docs && erl -noshell -s ar docs -pa ../ebin -s init stop)
 
+.PHONY: certs
 certs: $(TLS_FILES)
 $(TLS_FILES):
 	mkdir -p priv/tls
@@ -98,26 +113,32 @@ $(TLS_FILES):
 		-key-file $(TLS_KEY_FILE) \
 		 'gateway.localhost' '*.gateway.localhost'
 
+.PHONY: session
 session: build_test
 	erl $(ERL_TEST_OPTS) -noshell -sname slave -setcookie test -run ar main port 1983 data_dir data_test_slave &
 	erl $(ERL_TEST_OPTS) -sname master -setcookie test -run ar main data_dir data_test_master
 	kill 0
 
+.PHONY: polling_session
 polling_session: all
 	erl $(ERL_OPTS) -run ar main polling $(DEFAULT_PEER_OPTS)
 
+.PHONY: polling_gateway_session
 polling_gateway_session: all certs
 	erl $(ERL_OPTS) -run ar main \
 		polling \
 		gateway gateway.localhost \
 		$(DEFAULT_PEER_OPTS)
 
+.PHONY: sim_realistic
 sim_realistic: all
 	erl $(ERL_OPTS) -s ar_network spawn_and_mine realistic
 
+.PHONY: sim_hard
 sim_hard: all
 	erl $(ERL_OPTS) -s ar_network spawn_and_mine hard
 
+.PHONY: clean
 clean:
 	rm -f ./ebin/*.beam
 	rm -rf docs
@@ -135,24 +156,30 @@ clean:
 	rm -f lib/prometheus_httpd/ebin/prometheus_httpd.app
 	rm -f lib/prometheus_cowboy/ebin/prometheus_cowboy.app
 
+.PHONY: todo
 todo:
 	grep --color --line-number --recursive TODO "src"
 
+.PHONY: docker-image
 docker-image:
 	docker build -t arweave .
 
+.PHONY: testnet-docker
 testnet-docker: docker-image
 	cat peers.testnet | sed 's/^/peer /' \
 		| xargs docker run --name=arweave-testnet arweave
 
+.PHONY: ev-chain-docker
 dev-chain-docker: docker-image
 	docker run --cpus=0.5 --rm --name arweave-dev-chain --publish 1984:1984 arweave \
 		no_auto_join init mine peer 127.0.0.1:9
 
+.PHONY: build-plt
 build-plt:
 	$(DIALYZER) --build_plt --output_plt .arweave.plt \
 	--apps $(PLT_APPS)
 
+.PHONY: dialyzer
 dialyzer:
 	$(DIALYZER) --fullpath  --src -r ./src -r ./lib/*/src ./lib/pss \
 	-I ./lib/*/include --plt .arweave.plt --no_native \
