@@ -29,12 +29,16 @@ DEFAULT_PEER_OPTS := \
 	peer 159.203.49.13 peer 139.59.51.59 \
 	peer 138.197.232.192 peer 46.101.67.172
 
+ERL_DIST := ERL_EPMD_ADDRESS=127.0.0.1 erl \
+	-kernel inet_dist_use_interface '{127,0,0,1}' \
+	-setcookie arweave-testing
+
 test_all: test test_apps test_ipfs
 
 .PHONY: test
-test: build_test
-	@erl $(ERL_TEST_OPTS) -noshell -sname slave -setcookie test -run ar main port 1983 data_dir data_test_slave &
-	@erl $(ERL_TEST_OPTS) -noshell -sname master -setcookie test -run ar test_with_coverage -s init stop
+test:
+	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_slave@127.0.0.1 -setcookie test -run ar main port 1983 data_dir data_test_slave &
+	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_master@127.0.0.1 -setcookie test -run ar test_with_coverage -s init stop
 	kill 0
 
 .PHONY: test_apps
