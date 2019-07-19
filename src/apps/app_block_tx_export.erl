@@ -1,6 +1,6 @@
 -module(app_block_tx_export).
--export([export_blocks/1, export_blocks/2, export_blocks/3]).
--export([export_transactions/1, export_transactions/2, export_transactions/3]).
+-export([export_blocks/1, export_blocks/2]).
+-export([export_transactions/1, export_transactions/2]).
 -include("../ar.hrl").
 
 -record(state, {
@@ -14,30 +14,27 @@
 export_blocks([Filename, HeightStart, HeightEnd]) ->
 	export_on_main_node(Filename, HeightStart, HeightEnd, export_blocks).
 
-export_blocks(Filename, Range) ->
-	Peers = ar_bridge:get_remote_peers(whereis(http_bridge_node)),
-	export_blocks(Filename, Range, take(Peers, 10)).
+export_blocks(Filename, {HeightStart, HeightEnd}) ->
+	case get_hash_list(HeightEnd) of
+		{ok, BHL} ->
+			Peers = ar_bridge:get_remote_peers(whereis(http_bridge_node)),
+			export_blocks(Filename, {HeightStart, HeightEnd}, BHL, take(Peers, 10));
+		Error ->
+			Error
+	end.
 
-export_blocks(Filename, Range, Peers) ->
+export_blocks(Filename, Range, BHL, Peers) ->
 	Columns = ["Height", "Block ID", "Timestamp", "Block Size (Bytes)", "Difficulty", "Cumulative Difficulty",
 				"Reward Address", "Weave Size (Bytes)", "TXs", "TX Reward Sum (AR)", "Inflation Reward (AR)",
 				"TX Mining Reward (AR)", "TX Reward Pool (AR)", "Calculated TX Reward Pool (AR)"],
 	case init_csv(Filename, Columns) of
 		{ok, IoDevice} ->
-			export_blocks1(Range, Peers, IoDevice);
+			export_blocks1(Range, Peers, BHL, IoDevice);
 		{error, Reason} ->
 			{error, Reason}
 	end.
 
-export_blocks1(Range, Peers, IoDevice) ->
-	case ar_node:get_hash_list(whereis(http_entrypoint_node)) of
-		[] ->
-			{error, node_not_joined};
-		BHL ->
-			export_blocks(Range, Peers, IoDevice, BHL)
-	end.
-
-export_blocks({HeightStart, HeightEnd}, Peers, IoDevice, BHL) ->
+export_blocks1({HeightStart, HeightEnd}, Peers, BHL, IoDevice) ->
 	S = #state{
 		bhl = BHL,
 		peers = Peers
@@ -55,30 +52,27 @@ export_blocks({HeightStart, HeightEnd}, Peers, IoDevice, BHL) ->
 export_transactions([Filename, HeightStart, HeightEnd]) ->
 	export_on_main_node(Filename, HeightStart, HeightEnd, export_transactions).
 
-export_transactions(Filename, Range) ->
-	Peers = ar_bridge:get_remote_peers(whereis(http_bridge_node)),
-	export_transactions(Filename, Range, take(Peers, 10)).
+export_transactions(Filename, {HeightStart, HeightEnd}) ->
+	case get_hash_list(HeightEnd) of
+		{ok, BHL} ->
+			Peers = ar_bridge:get_remote_peers(whereis(http_bridge_node)),
+			export_transactions(Filename, {HeightStart, HeightEnd}, BHL, take(Peers, 10));
+		Error ->
+			Error
+	end.
 
-export_transactions(Filename, Range, Peers) ->
+export_transactions(Filename, Range, BHL, Peers) ->
 	Columns = ["Block Height", "Block Timestamp", "TX ID", "Submitted Address",
 				"Target", "Quantity (AR)", "Data Size (Bytes)", "Reward (AR)",
 				"App Name Tag", "Content Type Tag", "User Agent Tag", "Other Tags"],
 	case init_csv(Filename, Columns) of
 		{ok, IoDevice} ->
-			export_transactions1(Range, Peers, IoDevice);
+			export_transactions1(Range, BHL, Peers, IoDevice);
 		{error, Reason} ->
 			{error, Reason}
 	end.
 
-export_transactions1(Range, Peers, IoDevice) ->
-	case ar_node:get_hash_list(whereis(http_entrypoint_node)) of
-		[] ->
-			{error, node_not_joined};
-		BHL ->
-			export_transactions(Range, Peers, IoDevice, BHL)
-	end.
-
-export_transactions({HeightStart, HeightEnd}, Peers, IoDevice, BHL) ->
+export_transactions1({HeightStart, HeightEnd}, BHL, Peers, IoDevice) ->
 	S = #state{
 		bhl = BHL,
 		peers = Peers
@@ -120,6 +114,31 @@ export_on_main_node(Filename, HeightStart, HeightEnd, ExportFunction) ->
 		{error, Reason} ->
 			io:format(standard_error, "Export failed: ~p~n", [Reason]),
 			erlang:halt(2)
+	end.
+
+get_hash_list(HeightEnd) ->
+	case whereis(http_entrypoint_node) of
+		undefined ->
+			{error, "The node has not started yet"};
+		NodePid ->
+			get_hash_list(HeightEnd, NodePid)
+	end.
+
+get_hash_list(HeightEnd, NodePid) ->
+	%% Don't allow to export the last 50 blocks in case of fork recovery happens.
+	%% This is mostly to protect us from storing blocks and transactions from
+	%% a previous fork downloaded during the export.
+	case ar_node:get_height(NodePid) of
+		-1 ->
+			{error, "The node has not joined the network yet"};
+		Height when HeightEnd >= Height - ?STORE_BLOCKS_BEHIND_CURRENT ->
+			Msg = lists:flatten(io_lib:format(
+				"It's only possible to export up to block height ~B",
+				[Height - ?STORE_BLOCKS_BEHIND_CURRENT]
+			)),
+			{error, Msg};
+		_ ->
+			{ok, ar_node:get_hash_list(whereis(http_entrypoint_node))}
 	end.
 
 init_csv(Filename, Columns) ->
