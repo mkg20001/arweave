@@ -33,26 +33,32 @@ ERL_DIST := ERL_EPMD_ADDRESS=127.0.0.1 erl \
 	-kernel inet_dist_use_interface '{127,0,0,1}' \
 	-setcookie arweave-testing
 
+ERL_SHELL_MASTER = $(ERL_DIST) $(ERL_TEST_OPTS) -name test_master@127.0.0.1
+# Should be used together with the "data_dir data_test_slave". This is mostly
+# done inside ar.erl.
+ERL_TEST_MASTER = $(ERL_SHELL_MASTER) -noshell
+# Should be used together with the "data_dir data_test_slave"
+ERL_TEST_SLAVE = $(ERL_DIST) $(ERL_TEST_OPTS) -noshell -name test_slave@127.0.0.1
+
 test_all: test test_apps test_ipfs
 
 .PHONY: test
 test:
-	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_slave@127.0.0.1 -run ar main port 1983 data_dir data_test_slave &
-	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_master@127.0.0.1 -run ar test_with_coverage -s init stop
+	@$(ERL_TEST_SLAVE) -run ar main port 1983 data_dir data_test_slave &
+	@$(ERL_TEST_MASTER) -run ar test_with_coverage -s init stop
 	kill 0
 
 .PHONY: test_apps
 test_apps: all
-	@erl $(ERL_OPTS) -noshell -sname master -run ar test_apps -s init stop
+	@$(ERL_TEST_MASTER) -run ar test_apps -s init stop
 
 .PHONY: test_networks
 test_networks: all
-	@erl $(ERL_OPTS) -s ar start -s ar test_networks -s init stop
+	@$(ERL_TEST_MASTER) -s ar start -s ar test_networks -s init stop
 
 .PHONY: test_ipfs
 test_ipfs: all
-# 	Since we're using mnesia for IPFS, the sname is important.
-	@erl $(ERL_OPTS) -noshell -sname master -run ar test_ipfs -s init stop
+	@$(ERL_TEST_MASTER) -run ar test_ipfs -s init stop
 
 tnt: test
 
@@ -119,8 +125,8 @@ $(TLS_FILES):
 
 .PHONY: session
 session: build_test
-	erl $(ERL_TEST_OPTS) -noshell -sname slave -setcookie test -run ar main port 1983 data_dir data_test_slave &
-	erl $(ERL_TEST_OPTS) -sname master -setcookie test -run ar main data_dir data_test_master
+	$(ERL_TEST_SLAVE) -run ar main port 1983 data_dir data_test_slave &
+	$(ERL_SHELL_MASTER) -run ar main data_dir data_test_master
 	kill 0
 
 .PHONY: polling_session
