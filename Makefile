@@ -37,8 +37,8 @@ test_all: test test_apps test_ipfs
 
 .PHONY: test
 test:
-	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_slave@127.0.0.1 -setcookie test -run ar main port 1983 data_dir data_test_slave &
-	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_master@127.0.0.1 -setcookie test -run ar test_with_coverage -s init stop
+	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_slave@127.0.0.1 -run ar main port 1983 data_dir data_test_slave &
+	@${ERL_DIST} $(ERL_TEST_OPTS) -noshell -name test_master@127.0.0.1 -run ar test_with_coverage -s init stop
 	kill 0
 
 .PHONY: test_apps
