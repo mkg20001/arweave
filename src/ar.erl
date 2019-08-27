@@ -257,7 +257,7 @@ start(
 		ipfs_import = IPFSImport
 	}) ->
 	%% Start the logging system.
-	error_logger:logfile({open, Filename = generate_logfile_name()}),
+    error_logger:add_report_handler(ar_error_logger, Filename = generate_logfile_name()),
 	error_logger:tty(false),
 	warn_if_single_scheduler(),
 	%% Verify port collisions when gateway enabled
