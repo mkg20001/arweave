@@ -171,12 +171,16 @@ disorder(List) ->
 fetch_and_store_block(BH, _, []) ->
 	{error, {could_not_download_block, ar_util:encode(BH)}};
 fetch_and_store_block(BH, BHL, [Peer | Peers]) ->
-	io:format("Downloading block: ~p~n", [ar_util:encode(BH)]),
+	io:format(
+		"Downloading block  ~p  from peer  ~p ... ",
+		[ar_util:encode(BH), ar_util:format_peer(Peer)]),
 	case ar_node_utils:get_full_block(Peer, BH, BHL) of
 		B when ?IS_BLOCK(B) ->
+			io:format("success!~n"),
 			ar_storage:write_full_block(B),
 			{ok, B};
 		_ ->
+			io:format("failure!~n"),
 			fetch_and_store_block(BH, BHL, Peers)
 	end.
 
