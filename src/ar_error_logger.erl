@@ -130,7 +130,7 @@ format_body(State, [{Format,Args}|T]) ->
 		S0
 	catch
 		_:_ ->
-		format(State, "ERROR: ~240tp - ~240tp\n", [Format,Args])
+		format(State, "ERROR: ~1024tp - ~1024tp\n", [Format,Args])
 	end,
 	[S|format_body(State, T)];
 format_body(_State, []) ->
@@ -175,16 +175,16 @@ format_term(Term) when is_list(Term) ->
 		format_term_list(Term)
 	end;
 format_term(Term) ->
-	[{"~240tp",[Term]}].
+	[{"~1024tp",[Term]}].
 
 format_term_list([{Tag,Data}]) ->
-	[{"~240tp=~240tp",[Tag,Data]}];
+	[{"~1024tp=~1024tp",[Tag,Data]}];
 format_term_list([{Tag,Data}|T]) ->
-	[{"~240tp=~240tp ",[Tag,Data]}|format_term_list(T)];
+	[{"~1024tp=~1024tp ",[Tag,Data]}|format_term_list(T)];
 format_term_list([Data]) ->
-	[{"~240tp",[Data]}];
+	[{"~1024tp",[Data]}];
 format_term_list([Data|T]) ->
-	[{"~240tp ",[Data]}|format_term_list(T)];
+	[{"~1024tp ",[Data]}|format_term_list(T)];
 format_term_list([]) ->
 	[].
 
