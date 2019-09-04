@@ -1,5 +1,7 @@
 %%
 %% %CopyrightBegin%
+%%
+%% This file is based on the OTP's error_logger_file_h released under the following license.
 %% 
 %% Copyright Ericsson AB 1996-2017. All Rights Reserved.
 %% 
@@ -173,10 +175,10 @@ format_term(Term) when is_list(Term) ->
 		format_term_list(Term)
 	end;
 format_term(Term) ->
-	[{"~tw",[Term]}].
+	[{"~240tp",[Term]}].
 
 format_term_list([{Tag,Data}]) ->
-	[{"~tw=~240tp",[Tag,Data]}];
+	[{"~240tp=~240tp",[Tag,Data]}];
 format_term_list([{Tag,Data}|T]) ->
 	[{"~tw=~240tp ",[Tag,Data]}|format_term_list(T)];
 format_term_list([Data]) ->
@@ -192,15 +194,10 @@ string_p(FlatList) ->
 	io_lib:printable_list(FlatList).
 
 header({{Y,Mo,D},{H,Mi,S}}, Title) ->
-	io_lib:format("~n~ts ~w-~s-~wT~s:~s:~s+00:00 ", [Title,Y,month(Mo),D,t(H),t(Mi),t(S)]).
+	io_lib:format("~n~ts ~w-~2..0B-~2..0BT~s:~s:~s+00:00 ", [Title,Y,Mo,D,t(H),t(Mi),t(S)]).
 
 t(X) when is_integer(X) ->
 	t1(integer_to_list(X)).
 
 t1([X]) -> [$0,X];
 t1(X)	-> X.
-
-month(X) when X < 10 ->
-	"0" ++ integer_to_list(X);
-month(X) ->
-	integer_to_list(X).
