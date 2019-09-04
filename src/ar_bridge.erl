@@ -147,6 +147,7 @@ handle(S, {ignore_peer, Peer}) ->
 handle(S, {unignore_peer, Peer}) ->
 	S#state{ ignored_peers = lists:delete(Peer, S#state.ignored_peers) };
 handle(S, {add_tx, TX}) ->
+	ar_tx_db:log(TX#tx.id, {?MODULE, received_tx}),
 	maybe_send_tx(S, TX);
 handle(S, {add_block, OriginPeer, B, BDS, Recall}) ->
 	send_block(S, OriginPeer, B, BDS, Recall);
@@ -188,21 +189,22 @@ handle(S, UnknownMsg) ->
 	S.
 
 %% @doc Send the transaction to internal processes and to peers.
-maybe_send_tx(S, Data) ->
+maybe_send_tx(S, TX) ->
 	#state {
 		gossip = GS,
 		processed = Procd
 	} = S,
-	case ar_firewall:scan_tx(Data) of
+	case ar_firewall:scan_tx(TX) of
 		reject ->
-			% If the data does not pass the scan, ignore the message.
+			%% If the data does not pass the scan, ignore the message.
+			ar_tx_db:log(TX#tx.id, {?MODULE, firewall_rejected_tx}),
 			S;
 		accept ->
-			% The message is at least valid, distribute it.
-			Msg = {add_tx, Data},
+			%% The message is at least valid, distribute it.
+			Msg = {add_tx, TX},
 			{NewGS, _} = ar_gossip:send(GS,	Msg),
 			send_to_external(S, Msg),
-			add_processed(tx, Data, Procd),
+			add_processed(tx, TX, Procd),
 			S#state { gossip = NewGS }
 	end.
 
@@ -273,6 +275,7 @@ send_to_external(S, {NewGS, Msg}) ->
 	send_to_external(S#state { gossip = NewGS }, Msg).
 
 send_tx_to_external(ExternalPeers, TX) ->
+	ar_tx_db:log(TX#tx.id, {?MODULE, propagation_start}),
 	spawn(
 		fun() ->
 			ar:report(
