@@ -2,9 +2,9 @@
 %% %CopyrightBegin%
 %%
 %% This file is based on the OTP's error_logger_file_h released under the following license.
-%% 
+%%
 %% Copyright Ericsson AB 1996-2017. All Rights Reserved.
-%% 
+%%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
 %% You may obtain a copy of the License at
@@ -16,7 +16,7 @@
 %% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
-%% 
+%%
 %% %CopyrightEnd%
 %%
 -module(ar_error_logger).
@@ -79,7 +79,7 @@ handle_info({'EXIT', Fd, _Reason}, #st{fd=Fd,prev_handler=PrevHandler}) ->
 	case PrevHandler of
 	[] ->
 		remove_handler;
-	_ -> 
+	_ ->
 		{swap_handler, install_prev, [], PrevHandler, go_back}
 	end;
 handle_info(_, State) ->
@@ -180,7 +180,7 @@ format_term(Term) ->
 format_term_list([{Tag,Data}]) ->
 	[{"~240tp=~240tp",[Tag,Data]}];
 format_term_list([{Tag,Data}|T]) ->
-	[{"~tw=~240tp ",[Tag,Data]}|format_term_list(T)];
+	[{"~240tp=~240tp ",[Tag,Data]}|format_term_list(T)];
 format_term_list([Data]) ->
 	[{"~240tp",[Data]}];
 format_term_list([Data|T]) ->
