@@ -48,7 +48,7 @@ do_call_webhook({EventType, Entity}, Config, N) when N < ?NUMBER_OF_TRIES ->
 	} = Config,
 	{ok, {Scheme, _UserInfo, Host, Port, Path, Query}} = http_uri:parse(URL),
 	{ok, Client} = fusco:start(atom_to_list(Scheme) ++ "://" ++ binary_to_list(Host) ++ ":" ++ integer_to_list(Port), []),
-	{ok, Result} =
+	Result =
 		fusco:request(
 			Client,
 			<<Path/binary, Query/binary>>,
@@ -58,7 +58,7 @@ do_call_webhook({EventType, Entity}, Config, N) when N < ?NUMBER_OF_TRIES ->
 			10000
 		),
 	case Result of
-		{{<<"200">>, _}, _, _, _, _} ->
+		{ok, {{<<"200">>, _}, _, _, _, _}} ->
 			ok = fusco:disconnect(Client),
 			ar:info([
 				{ar_webhook_worker, webhook_call_success},
