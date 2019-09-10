@@ -14,7 +14,7 @@ start(Configs) ->
 new_block(Workers, Block) ->
 	lists:foreach(
 		fun(Worker) ->
-			ok = ar_webhook_worker:call_webhook(Worker, {block, Block})
+			ok = ar_webhook_worker:cast_webhook(Worker, {block, Block})
 		end,
 		Workers
 	),
@@ -23,7 +23,7 @@ new_block(Workers, Block) ->
 new_transaction(Workers, TX) ->
 	lists:foreach(
 		fun(Worker) ->
-			ok = ar_webhook_worker:call_webhook(Worker, {transaction, TX})
+			ok = ar_webhook_worker:cast_webhook(Worker, {transaction, TX})
 		end,
 		Workers
 	),

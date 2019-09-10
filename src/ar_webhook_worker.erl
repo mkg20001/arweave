@@ -1,7 +1,7 @@
 -module(ar_webhook_worker).
 -behaviour(gen_server).
 
--export([start_link/1, call_webhook/2]).
+-export([start_link/1, cast_webhook/2]).
 -export([init/1, handle_call/3, handle_cast/2]).
 
 -include("ar_config.hrl").
@@ -18,7 +18,7 @@
 start_link(Config) ->
 	gen_server:start_link(?MODULE, [Config], []).
 
-call_webhook(Worker, Event) ->
+cast_webhook(Worker, Event) ->
 	gen_server:cast(Worker, {call_webhook, Event}).
 
 %% Generic server callbacks
@@ -30,12 +30,12 @@ handle_call(_, _, Config) ->
 	{noreply, Config}.
 
 handle_cast({call_webhook, Event}, Config) ->
-	ok = do_call_webhook(Event, Config),
+	ok = call_webhook(Event, Config),
 	{noreply, Config}.
 
 %% Private functions
 
-do_call_webhook({EventType, Entity}, #config_webhook { events = Events } = Config) ->
+call_webhook({EventType, Entity}, #config_webhook { events = Events } = Config) ->
 	case lists:member(EventType, Events) of
 		true -> do_call_webhook({EventType, Entity}, Config, 0);
 		false -> ok
